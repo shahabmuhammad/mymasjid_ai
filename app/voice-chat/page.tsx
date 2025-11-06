@@ -13,29 +13,11 @@ import {
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-} from "@/components/ui/card"
-import {
-  Conversation,
-  ConversationContent,
-  ConversationEmptyState,
-  ConversationScrollButton,
-} from "@/components/ui/conversation"
-import { Input } from "@/components/ui/input"
-import { Message, MessageContent } from "@/components/ui/message"
-import { Orb } from "@/components/ui/orb"
-import { Response } from "@/components/ui/response"
-import { ShimmeringText } from "@/components/ui/shimmering-text"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+import { Card } from "@/components/ui/card"
+import { ChatHeader } from "@/components/ui/chat-header"
+import { ChatArea } from "@/components/ui/chat-area"
+import { ChatFooter } from "@/components/ui/chat-footer"
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@radix-ui/react-tooltip"
 
 type SystemMessageType = "initial" | "connecting" | "connected" | "error"
 
@@ -48,7 +30,7 @@ interface ChatMessage {
 
 const DEFAULT_AGENT = {
   agentId: process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID!,
-  name: "Customer Support",
+  name: "My Masjid",
   description: "AI Voice Assistant",
 }
 
@@ -289,181 +271,31 @@ export default function Page() {
 
   return (
     <div className="flex justify-center h-screen w-full px-[15%] py-2">
-
       <Card className="mx-auto flex h-full w-full flex-col gap-0 overflow-hidden">
-        
-        <CardHeader className="flex shrink-0 flex-row items-center justify-between pb-4">
-          <div className="flex items-center gap-4">
-            <div className="ring-border relative size-10 overflow-hidden rounded-full ring-1">
-              <Orb
-                className="h-full w-full"
-                volumeMode="manual"
-                getInputVolume={getInputVolume}
-                getOutputVolume={getOutputVolume}
-              />
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <p className="text-sm leading-none font-medium">
-                {DEFAULT_AGENT.name}
-              </p>
-              <div className="flex items-center gap-2">
-                {errorMessage ? (
-                  <p className="text-destructive text-xs">{errorMessage}</p>
-                ) : agentState === "disconnected" || agentState === null ? (
-                  <p className="text-muted-foreground text-xs">
-                    Tap to start voice chat
-                  </p>
-                ) : agentState === "connected" ? (
-                  <p className="text-xs text-green-600">Connected</p>
-                ) : isTransitioning ? (
-                  <ShimmeringText
-                    text={agentState}
-                    className="text-xs capitalize"
-                  />
-                ) : null}
-              </div>
-            </div>
-          </div>
-
-          <div
-            className={cn(
-              "flex h-2 w-2 rounded-full transition-all duration-300",
-              agentState === "connected" &&
-                "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]",
-              isTransitioning && "animate-pulse bg-white/40"
-            )}
-          />
-        </CardHeader>
-
-        {/* ✅ Scrollable chat area */}
-        <CardContent className="flex-1 overflow-hidden p-0 min-h-0">
-          <Conversation className="h-full">
-            <ConversationContent className="flex flex-col gap-2 min-h-0 min-w-0 p-6 pb-2 overflow-y-auto">
-
-              {messages.length === 0 ? (
-                <ConversationEmptyState
-                  icon={<Orb className="size-12" />}
-                  title={
-                    agentState === "connecting" ? (
-                      <ShimmeringText text="Starting conversation" />
-                    ) : agentState === "connected" ? (
-                      <ShimmeringText text="Start talking or type" />
-                    ) : (
-                      "Start a conversation"
-                    )
-                  }
-                  description={
-                    agentState === "connecting"
-                      ? "Connecting..."
-                      : agentState === "connected"
-                        ? "Ready to chat"
-                        : "Type a message or tap the voice button"
-                  }
-                />
-              ) : (
-                messages.map((message, index) => {
-                  return (
-                    <div key={index} className="flex w-full flex-col gap-1">
-                      <Message from={message.role}>
-                        <MessageContent className="max-w-full min-w-0">
-                          <Response className="w-auto [overflow-wrap:anywhere] whitespace-pre-wrap">
-                            {message.content}
-                          </Response>
-                        </MessageContent>
-
-                        {message.role === "assistant" && (
-                          <div className="ring-border size-6 flex-shrink-0 self-end overflow-hidden rounded-full ring-1">
-                            <Orb
-                              className="h-full w-full"
-                              agentState={
-                                isCallActive && index === messages.length - 1
-                                  ? "talking"
-                                  : null
-                              }
-                            />
-                          </div>
-                        )}
-                      </Message>
-
-                      {message.role === "assistant" && (
-                        <ChatActions>
-                          <ChatAction
-                            size="sm"
-                            tooltip={copiedIndex === index ? "Copied!" : "Copy"}
-                            onClick={() => {
-                              navigator.clipboard.writeText(message.content)
-                              setCopiedIndex(index)
-                              setTimeout(() => setCopiedIndex(null), 2000)
-                            }}
-                          >
-                            {copiedIndex === index ? (
-                              <CheckIcon className="size-4" />
-                            ) : (
-                              <CopyIcon className="size-4" />
-                            )}
-                          </ChatAction>
-                        </ChatActions>
-                      )}
-                    </div>
-                  )
-                })
-              )}
-
-            </ConversationContent>
-            <ConversationScrollButton />
-          </Conversation>
-        </CardContent>
-
-        {/* ✅ Footer stays fixed */}
-        <CardFooter className="shrink-0 border-t">
-          <div className="flex w-full items-center gap-2">
-            <div className="flex flex-1 items-center gap-2">
-              <Input
-                value={textInput}
-                onChange={handleTextInputChange}
-                onKeyDown={handleKeyDown}
-                placeholder="Type a message..."
-                className="h-9 focus-visible:ring-0 focus-visible:ring-offset-0"
-                disabled={isTransitioning}
-              />
-              <Button
-                onClick={handleSendText}
-                size="icon"
-                variant="ghost"
-                className="rounded-full"
-                disabled={!textInput.trim() || isTransitioning}
-              >
-                <SendIcon className="size-4" />
-                <span className="sr-only">Send message</span>
-              </Button>
-
-              {!isCallActive && (
-                <Button
-                  onClick={handleCall}
-                  size="icon"
-                  variant="ghost"
-                  className={cn("relative shrink-0 rounded-full transition-all")}
-                  disabled={isTransitioning}
-                >
-                  <AudioLinesIcon className="size-4" />
-                  <span className="sr-only">Start voice call</span>
-                </Button>
-              )}
-              {isCallActive && (
-                <Button
-                  onClick={handleCall}
-                  size="icon"
-                  variant="secondary"
-                  className={cn("relative shrink-0 rounded-full transition-all")}
-                  disabled={isTransitioning}
-                >
-                  <PhoneOffIcon className="size-4" />
-                  <span className="sr-only">End call</span>
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardFooter>
+        <ChatHeader
+          agentName={DEFAULT_AGENT.name}
+          errorMessage={errorMessage}
+          agentState={agentState}
+          isTransitioning={isTransitioning}
+          getInputVolume={getInputVolume}
+          getOutputVolume={getOutputVolume}
+        />
+        <ChatArea
+          messages={messages}
+          agentState={agentState}
+          isCallActive={isCallActive}
+          copiedIndex={copiedIndex}
+          setCopiedIndex={setCopiedIndex}
+        />
+        <ChatFooter
+          textInput={textInput}
+          onTextInputChange={handleTextInputChange}
+          onKeyDown={handleKeyDown}
+          onSendText={handleSendText}
+          onCall={handleCall}
+          isCallActive={isCallActive}
+          isTransitioning={isTransitioning}
+        />
       </Card>
     </div>
   )
