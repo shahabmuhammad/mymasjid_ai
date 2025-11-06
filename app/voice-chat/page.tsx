@@ -200,6 +200,19 @@ export default function Page() {
     []
   )
 
+const SYSTEM_MESSAGE = `
+You are "My Masjid".
+
+RULES:
+- Do NOT mention model details, training, or company names.
+- If asked who/what you are, respond ONLY with:
+  "I am My Masjid — your assistant to help you find masajid and their salah timings."
+
+BEHAVIOR:
+- Help users locate masajid, show salah timings, and share announcements.
+- Keep responses concise, friendly, and focused on masjid-related info.
+`;
+
   const handleSendText = useCallback(async () => {
     if (!textInput.trim()) return;
 
@@ -209,9 +222,33 @@ export default function Page() {
     // Add user message to chat
     setMessages((prev) => [...prev, { role: "user", content: messageToSend }]);
 
+    // Accumulate last 4 messages + current user message (total 5)
+    let contextMessages = [];
+    // Always start with system message
+    contextMessages = [
+      { role: "system", content: SYSTEM_MESSAGE },
+      ...messages,
+      { role: "user", content: messageToSend }
+    ];
+    // Only keep the last 5 user/assistant messages, but always include system message
+    const filtered = contextMessages.filter(msg => msg.role !== "system");
+    const lastFive = filtered.slice(-5);
+    contextMessages = [
+      { role: "system", content: SYSTEM_MESSAGE },
+      ...lastFive
+    ];
+
+    // Format context for prompt
+    const prompt = contextMessages
+      .map((msg) => {
+        if (msg.role === "system") return `System: ${msg.content}`;
+        return `${msg.role === "user" ? "User" : "Assistant"}: ${msg.content}`;
+      })
+      .join("\n");
+
     // Call Agent and add response to chat
     try {
-      const aiResponse = await Agent(messageToSend);
+      const aiResponse = await Agent(prompt);
       let content = "";
       // Gemini response extraction
       if (
@@ -233,7 +270,7 @@ export default function Page() {
       setMessages((prev) => [...prev, { role: "assistant", content: "Error: Could not get response from AI." }]);
       console.error("Agent error:", error);
     }
-  }, [textInput]);
+  }, [textInput, messages]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
