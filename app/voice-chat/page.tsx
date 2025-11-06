@@ -1,15 +1,10 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { Agent } from "@/lib/api/agent"
 import type { ComponentProps } from "react"
 import { useConversation } from "@elevenlabs/react"
-import {
-  AudioLinesIcon,
-  CheckIcon,
-  CopyIcon,
-  PhoneOffIcon,
-  SendIcon,
-} from "lucide-react"
+
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -206,36 +201,39 @@ export default function Page() {
   )
 
   const handleSendText = useCallback(async () => {
-    if (!textInput.trim()) return
+    if (!textInput.trim()) return;
 
-    const messageToSend = textInput
+    const messageToSend = textInput;
+    setTextInput("");
 
-    if (agentState === "disconnected" || agentState === null) {
-      const userMessage: ChatMessage = {
-        role: "user",
-        content: messageToSend,
+    // Add user message to chat
+    setMessages((prev) => [...prev, { role: "user", content: messageToSend }]);
+
+    // Call Agent and add response to chat
+    try {
+      const aiResponse = await Agent(messageToSend);
+      let content = "";
+      // Gemini response extraction
+      if (
+        aiResponse &&
+        aiResponse.candidates &&
+        Array.isArray(aiResponse.candidates) &&
+        aiResponse.candidates[0]?.content?.parts &&
+        Array.isArray(aiResponse.candidates[0].content.parts) &&
+        aiResponse.candidates[0].content.parts[0]?.text
+      ) {
+        content = aiResponse.candidates[0].content.parts[0].text;
+      } else if (typeof aiResponse === "string") {
+        content = aiResponse;
+      } else {
+        content = JSON.stringify(aiResponse);
       }
-      setTextInput("")
-      setAgentState("connecting")
-
-      try {
-        await startConversation(true, true)
-        setMessages([userMessage])
-        conversation.sendUserMessage(messageToSend)
-      } catch (error) {
-        console.error("Failed to start conversation:", error)
-      }
-    } else if (agentState === "connected") {
-      const newMessage: ChatMessage = {
-        role: "user",
-        content: messageToSend,
-      }
-      setMessages((prev) => [...prev, newMessage])
-      setTextInput("")
-
-      conversation.sendUserMessage(messageToSend)
+      setMessages((prev) => [...prev, { role: "assistant", content }]);
+    } catch (error) {
+      setMessages((prev) => [...prev, { role: "assistant", content: "Error: Could not get response from AI." }]);
+      console.error("Agent error:", error);
     }
-  }, [textInput, agentState, conversation, startConversation])
+  }, [textInput]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
