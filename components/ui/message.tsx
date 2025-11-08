@@ -9,18 +9,23 @@ import {
 } from "@/components/ui/avatar"
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
-  from: "user" | "assistant"
+  from: "user" | "assistant" | "system"
 }
 
 export const Message = ({ className, from, ...props }: MessageProps) => (
   <div
     className={cn(
       "group flex w-full items-end justify-end gap-2 py-4",
-      from === "user" ? "is-user" : "is-assistant flex-row-reverse justify-end",
+      from === "user"
+        ? "is-user"
+        : from === "assistant"
+        ? "is-assistant flex-row-reverse justify-end"
+        : "is-system justify-center",
       className
     )}
     {...props}
-  />
+  >
+  </div>
 )
 
 const messageContentVariants = cva(

@@ -1,9 +1,9 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Agent } from "@/lib/api/agent"
 import type { ComponentProps } from "react"
 import { useConversation } from "@elevenlabs/react"
+import { ChatMessage, handleSendText } from "@/lib/handleSendText"
 
 
 import { cn } from "@/lib/utils"
@@ -16,12 +16,7 @@ import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@radix
 
 type SystemMessageType = "initial" | "connecting" | "connected" | "error"
 
-interface ChatMessage {
-  role: "user" | "assistant"
-  content: string
-  timestamp?: Date
-  type?: SystemMessageType
-}
+// ChatMessage type is now imported from lib/handleSendText
 
 const DEFAULT_AGENT = {
   agentId: process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID!,
@@ -85,6 +80,7 @@ const ChatAction = ({
 
 export default function Page() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [systemMessages, setSystemMessages] = useState<string[]>([])
   const [agentState, setAgentState] = useState<
     "disconnected" | "connecting" | "connected" | "disconnecting" | null
   >("disconnected")
@@ -146,6 +142,11 @@ export default function Page() {
 
         if (!skipConnectingMessage) {
           setMessages([])
+          setSystemMessages([
+            "Analyzing your prompt..",
+            "Thinking ...",
+            "Preparing response .."
+          ])
         }
 
         if (!textOnly) {
@@ -165,10 +166,13 @@ export default function Page() {
           },
           onStatusChange: (status) => setAgentState(status.status),
         })
+        // Remove system messages after session starts
+        setSystemMessages([])
       } catch (error) {
         console.error(error)
         setAgentState("disconnected")
         setMessages([])
+        setSystemMessages([])
       }
     },
     [conversation, getMicStream]
@@ -200,86 +204,31 @@ export default function Page() {
     []
   )
 
-const SYSTEM_MESSAGE = `
-You are "My Masjid".
 
-RULES:
-- Do NOT mention model details, training, or company names.
-- If asked who/what you are, respond ONLY with:
-  "I am My Masjid — your assistant to help you find masajid and their salah timings."
-
-BEHAVIOR:
-- Help users locate masajid, show salah timings, and share announcements.
-- Keep responses concise, friendly, and focused on masjid-related info.
-`;
-
-  const handleSendText = useCallback(async () => {
-    if (!textInput.trim()) return;
-
-    const messageToSend = textInput;
-    setTextInput("");
-
-    // Add user message to chat
-    setMessages((prev) => [...prev, { role: "user", content: messageToSend }]);
-
-    // Accumulate last 4 messages + current user message (total 5)
-    let contextMessages = [];
-    // Always start with system message
-    contextMessages = [
-      { role: "system", content: SYSTEM_MESSAGE },
-      ...messages,
-      { role: "user", content: messageToSend }
-    ];
-    // Only keep the last 5 user/assistant messages, but always include system message
-    const filtered = contextMessages.filter(msg => msg.role !== "system");
-    const lastFive = filtered.slice(-5);
-    contextMessages = [
-      { role: "system", content: SYSTEM_MESSAGE },
-      ...lastFive
-    ];
-
-    // Format context for prompt
-    const prompt = contextMessages
-      .map((msg) => {
-        if (msg.role === "system") return `System: ${msg.content}`;
-        return `${msg.role === "user" ? "User" : "Assistant"}: ${msg.content}`;
-      })
-      .join("\n");
-
-    // Call Agent and add response to chat
-    try {
-      const aiResponse = await Agent(prompt);
-      let content = "";
-      // Gemini response extraction
-      if (
-        aiResponse &&
-        aiResponse.candidates &&
-        Array.isArray(aiResponse.candidates) &&
-        aiResponse.candidates[0]?.content?.parts &&
-        Array.isArray(aiResponse.candidates[0].content.parts) &&
-        aiResponse.candidates[0].content.parts[0]?.text
-      ) {
-        content = aiResponse.candidates[0].content.parts[0].text;
-      } else if (typeof aiResponse === "string") {
-        content = aiResponse;
-      } else {
-        content = JSON.stringify(aiResponse);
-      }
-      setMessages((prev) => [...prev, { role: "assistant", content }]);
-    } catch (error) {
-      setMessages((prev) => [...prev, { role: "assistant", content: "Error: Could not get response from AI." }]);
-      console.error("Agent error:", error);
-    }
-  }, [textInput, messages]);
+  // Use the refactored handleSendText from lib/handleSendText
+  const handleSendTextCallback = useCallback(() => {
+    setSystemMessages([
+      "Analyzing your prompt..",
+      "Thinking ...",
+      "Preparing response .."
+    ])
+    handleSendText({
+      textInput,
+      messages,
+      setMessages,
+      setTextInput,
+    })
+    setSystemMessages([])
+  }, [textInput, messages, setMessages, setTextInput])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault()
-        handleSendText()
+        handleSendTextCallback()
       }
     },
-    [handleSendText]
+    [handleSendTextCallback]
   )
 
   useEffect(() => {
@@ -315,6 +264,16 @@ BEHAVIOR:
           getInputVolume={getInputVolume}
           getOutputVolume={getOutputVolume}
         />
+        {/* Show system messages while preparing response */}
+        {systemMessages.length > 0 && (
+          <div className="flex flex-col items-center py-4">
+            {systemMessages.map((msg, idx) => (
+              <div key={idx} className="text-muted-foreground text-sm mb-1 animate-pulse">
+                {msg}
+              </div>
+            ))}
+          </div>
+        )}
         <ChatArea
           messages={messages}
           agentState={agentState}
@@ -326,7 +285,7 @@ BEHAVIOR:
           textInput={textInput}
           onTextInputChange={handleTextInputChange}
           onKeyDown={handleKeyDown}
-          onSendText={handleSendText}
+          onSendText={handleSendTextCallback}
           onCall={handleCall}
           isCallActive={isCallActive}
           isTransitioning={isTransitioning}

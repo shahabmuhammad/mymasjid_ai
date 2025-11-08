@@ -8,7 +8,7 @@ import { ChatActions, ChatAction } from "@/components/ui/chat-actions";
 import { CheckIcon, CopyIcon } from "lucide-react";
 
 interface ChatMessage {
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "system";
   content: string;
 }
 
