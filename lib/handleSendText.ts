@@ -20,6 +20,7 @@ export interface ChatMessage {
   type?: string
 }
 
+
 export async function handleSendText({
   textInput,
   messages,
@@ -28,7 +29,7 @@ export async function handleSendText({
 }: {
   textInput: string
   messages: ChatMessage[]
-  setMessages: (fn: (prev: ChatMessage[]) => ChatMessage[]) => void
+  setMessages: (fn: (prev: ChatMessage[]) => ChatMessage[] ) => void
   setTextInput: (val: string) => void
 }) {
   if (!textInput.trim()) return;
@@ -37,7 +38,11 @@ export async function handleSendText({
   setTextInput("");
 
   // Add user message to chat
-  setMessages((prev) => [...prev, { role: "user", content: messageToSend }]);
+  setMessages((prev) => [
+    ...prev,
+    { role: "user", content: messageToSend },
+    { role: "assistant", content: "ThinkingMsg" }
+  ]);
 
   // Accumulate last 4 messages + current user message (total 5)
   let contextMessages: ChatMessage[] = [];
@@ -63,7 +68,7 @@ export async function handleSendText({
     })
     .join("\n");
 
-  // Call Agent and add response to chat
+  // Call Agent and replace 'Thinking ...' with response
   try {
     const aiResponse = await Agent(prompt);
     let content = "";
@@ -82,9 +87,28 @@ export async function handleSendText({
     } else {
       content = JSON.stringify(aiResponse);
     }
-    setMessages((prev) => [...prev, { role: "assistant", content }]);
+    setMessages((prev) => {
+      // Replace the last assistant message if it's 'ThinkingMsg'
+      const lastIdx = prev.length - 1;
+      if (lastIdx >= 0 && prev[lastIdx].role === "assistant" && prev[lastIdx].content === "ThinkingMsg") {
+        return [
+          ...prev.slice(0, lastIdx),
+          { role: "assistant", content }
+        ];
+      }
+      return [...prev, { role: "assistant", content }];
+    });
   } catch (error) {
-    setMessages((prev) => [...prev, { role: "assistant", content: "Error: Could not get response from AI." }]);
+    setMessages((prev) => {
+      const lastIdx = prev.length - 1;
+      if (lastIdx >= 0 && prev[lastIdx].role === "assistant" && prev[lastIdx].content === "ThinkingMsg") {
+        return [
+          ...prev.slice(0, lastIdx),
+          { role: "assistant", content: "Error: Could not get response from AI." }
+        ];
+      }
+      return [...prev, { role: "assistant", content: "Error: Could not get response from AI." }];
+    });
     console.error("Agent error:", error);
   }
 }

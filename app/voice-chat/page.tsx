@@ -13,6 +13,7 @@ import { ChatHeader } from "@/components/ui/chat-header"
 import { ChatArea } from "@/components/ui/chat-area"
 import { ChatFooter } from "@/components/ui/chat-footer"
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@radix-ui/react-tooltip"
+import { ShimmeringText } from "@/components/ui/shimmering-text"
 
 type SystemMessageType = "initial" | "connecting" | "connected" | "error"
 
@@ -268,8 +269,12 @@ export default function Page() {
         {systemMessages.length > 0 && (
           <div className="flex flex-col items-center py-4">
             {systemMessages.map((msg, idx) => (
-              <div key={idx} className="text-muted-foreground text-sm mb-1 animate-pulse">
-                {msg}
+              <div key={idx} className="text-muted-foreground text-sm mb-1">
+                {msg === "Thinking ..." ? (
+                  <ShimmeringText text={msg} />
+                ) : (
+                  msg
+                )}
               </div>
             ))}
           </div>

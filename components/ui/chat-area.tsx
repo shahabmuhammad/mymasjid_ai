@@ -51,7 +51,11 @@ export function ChatArea({ messages, agentState, isCallActive, copiedIndex, setC
                 <Message from={message.role}>
                   <MessageContent className="max-w-full min-w-0">
                     <Response className="w-auto [overflow-wrap:anywhere] whitespace-pre-wrap">
-                      {message.content}
+                      {message.role === "assistant" && message.content === "ThinkingMsg" ? (
+                        <ShimmeringText text="Thinking ..." />
+                      ) : (
+                        message.content
+                      )}
                     </Response>
                   </MessageContent>
                   {message.role === "assistant" && (
