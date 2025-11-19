@@ -50,13 +50,12 @@ export async function searchMasjidByLocation(
   }
 }
 
-export async function getPublicFilteredMasjid(
+export async function searchMasjid(
   searchParam: string,
-  isPublished: number
 ): Promise<PublicFilteredMasjidResponse> {
   try {
     const response: ApiResponse<PublicFilteredMasjidResponse> = await api.get(
-      `Masjid/GetPublicFilteredMasjid?searchParam=${searchParam}&isPublished=${isPublished}`
+      `Masjid/GetPublicFilteredMasjid?searchParam=${searchParam}&isPublished=1`
     );
 
     if (response.hasError) {
